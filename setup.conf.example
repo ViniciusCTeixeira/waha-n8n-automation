@@ -1,0 +1,9 @@
+# Copie este arquivo para setup.conf e ajuste os valores antes de rodar o setup.
+# O arquivo setup.conf real fica fora do Git pelo .gitignore.
+
+PUBLIC_IP=203.0.113.10
+ACME_EMAIL=admin@seudominio.com
+
+N8N_DOMAIN=n8n.seudominio.com
+WAHA_DOMAIN=waha.seudominio.com
+TZ=America/Sao_Paulo

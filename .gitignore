@@ -1,0 +1,11 @@
+.env
+.env.local
+setup.conf
+.idea/
+certs/*
+!certs/.gitkeep
+config/redis/redis.conf
+backups/*
+!backups/.gitkeep
+shared/*
+!shared/.gitkeep

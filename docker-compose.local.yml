@@ -1,0 +1,153 @@
+name: waha-n8n-local
+
+services:
+  postgres:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256 --auth-local=scram-sha-256
+      N8N_DB_USER: ${N8N_DB_USER}
+      N8N_DB_PASSWORD: ${N8N_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:${LOCAL_POSTGRES_PORT}:5432"
+    volumes:
+      - pgdata_local:/var/lib/postgresql/data
+      - ./initdb/01-create-n8n-user.sh:/docker-entrypoint-initdb.d/01-create-n8n-user.sh:ro
+    networks:
+      - local
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -h 127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  redis:
+    image: redis:7.4.9-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory-policy
+      - noeviction
+      - --requirepass
+      - ${REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:${LOCAL_REDIS_PORT}:6379"
+    volumes:
+      - redis_data_local:/data
+    networks:
+      - local
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -h 127.0.0.1 -p 6379 -a '$${REDIS_PASSWORD}' ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:${N8N_VERSION}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${LOCAL_N8N_PORT}:5678"
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://localhost:${LOCAL_N8N_PORT}/
+      N8N_EDITOR_BASE_URL: http://localhost:${LOCAL_N8N_PORT}/
+      N8N_SECURE_COOKIE: "false"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_USER_FOLDER: /home/node/.n8n
+      GENERIC_TIMEZONE: ${TZ}
+      TZ: ${TZ}
+      N8N_LOG_LEVEL: info
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      DB_POSTGRESDB_USER: ${N8N_DB_USER}
+      DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD}
+      DB_POSTGRESDB_SCHEMA: public
+      EXECUTIONS_MODE: regular
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: 336
+      N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE: "true"
+      N8N_REINSTALL_MISSING_PACKAGES: "true"
+      N8N_RESTRICT_FILE_ACCESS_TO: /files
+    volumes:
+      - n8n_data_local:/home/node/.n8n
+      - ./shared:/files
+    networks:
+      - local
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5678/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  waha:
+    image: ${WAHA_IMAGE}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${LOCAL_WAHA_PORT}:3000"
+    environment:
+      TZ: ${TZ}
+      WHATSAPP_DEFAULT_ENGINE: ${WAHA_ENGINE}
+      WAHA_NAMESPACE: all
+      WAHA_SESSION_NAMESPACE: ${WAHA_ENGINE}
+      WAHA_PUBLIC_URL: http://localhost:${LOCAL_WAHA_PORT}
+      WAHA_BASE_URL: http://localhost:${LOCAL_WAHA_PORT}
+      WAHA_LOG_LEVEL: info
+
+      WAHA_API_KEY: sha512:${WAHA_API_KEY_SHA512}
+      WAHA_API_KEY_PLAIN: ${WAHA_API_KEY_PLAIN}
+      WAHA_DASHBOARD_ENABLED: "true"
+      WAHA_DASHBOARD_USERNAME: ${WAHA_DASHBOARD_USERNAME}
+      WAHA_DASHBOARD_PASSWORD: ${WAHA_DASHBOARD_PASSWORD}
+      WHATSAPP_SWAGGER_ENABLED: "true"
+      WHATSAPP_SWAGGER_USERNAME: ${WAHA_SWAGGER_USERNAME}
+      WHATSAPP_SWAGGER_PASSWORD: ${WAHA_SWAGGER_PASSWORD}
+
+      WAHA_APPS_ENABLED: "true"
+      REDIS_URL: redis://default:${REDIS_PASSWORD}@redis:6379/1
+
+      WHATSAPP_HOOK_URL: http://n8n:5678/webhook/${WAHA_N8N_WEBHOOK_PATH}
+      WHATSAPP_HOOK_EVENTS: ${WAHA_WEBHOOK_EVENTS}
+      WHATSAPP_HOOK_HMAC_KEY: ${WAHA_WEBHOOK_HMAC_KEY}
+      WHATSAPP_HOOK_RETRIES_POLICY: linear
+      WHATSAPP_HOOK_RETRIES_DELAY_SECONDS: 2
+      WHATSAPP_HOOK_RETRIES_ATTEMPTS: 5
+    volumes:
+      - waha_sessions_local:/app/.sessions
+      - waha_media_local:/app/.media
+    networks:
+      - local
+    depends_on:
+      redis:
+        condition: service_healthy
+      n8n:
+        condition: service_healthy
+
+networks:
+  local:
+
+volumes:
+  pgdata_local:
+  redis_data_local:
+  n8n_data_local:
+  waha_sessions_local:
+  waha_media_local:

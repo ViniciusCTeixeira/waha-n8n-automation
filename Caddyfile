@@ -1,0 +1,35 @@
+{
+    email {$ACME_EMAIL}
+}
+
+{$N8N_DOMAIN} {
+    encode zstd gzip
+
+    reverse_proxy n8n:5678 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+    }
+
+    header {
+        -Server
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+
+{$WAHA_DOMAIN} {
+    encode zstd gzip
+
+    reverse_proxy waha:3000 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+    }
+
+    header {
+        -Server
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}

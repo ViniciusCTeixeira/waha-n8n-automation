@@ -1,0 +1,23 @@
+bind 0.0.0.0
+protected-mode yes
+
+# Porta interna Docker, usada pelo WAHA e pelos workflows do n8n.
+port 6379
+
+# Porta TLS do container. No host, ela é publicada como 6379.
+tls-port 6380
+tls-cert-file /tls/server.crt
+tls-key-file /tls/server.key
+tls-ca-cert-file /tls/ca.crt
+tls-auth-clients no
+tls-protocols "TLSv1.2 TLSv1.3"
+
+requirepass __REDIS_PASSWORD__
+
+appendonly yes
+appendfsync everysec
+save 60 1000
+dir /data
+
+# Não descarte chaves silenciosamente quando a memória acabar.
+maxmemory-policy noeviction
