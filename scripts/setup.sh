@@ -82,10 +82,10 @@ rand_hex() {
 
 case "$(uname -m)" in
   aarch64|arm64)
-    WAHA_IMAGE="devlikeapro/waha:gows-arm-2026.6.2"
+    WAHA_IMAGE="devlikeapro/waha:gows-arm"
     ;;
   x86_64|amd64)
-    WAHA_IMAGE="devlikeapro/waha:gows-2026.6.2"
+    WAHA_IMAGE="devlikeapro/waha:gows"
     ;;
   *)
     echo "Arquitetura não reconhecida: $(uname -m)" >&2
@@ -109,7 +109,7 @@ WAHA_DOMAIN=$WAHA_DOMAIN
 ACME_EMAIL=$ACME_EMAIL
 TZ=$TZ
 
-N8N_VERSION=2.30.5
+N8N_VERSION=stable
 WAHA_IMAGE=$WAHA_IMAGE
 WAHA_ENGINE=GOWS
 
@@ -188,7 +188,7 @@ EOF
 make_server_cert postgres
 make_server_cert redis
 
-# UID/GID 999 corresponde ao usuário de serviço nas imagens fixadas.
+# UID/GID 999 corresponde ao usuário de serviço nas variantes Debian do PostgreSQL e Alpine do Redis selecionadas.
 chown 999:999 certs/postgres/server.key certs/postgres/server.crt
 chown 999:999 certs/redis/server.key certs/redis/server.crt certs/ca.crt
 chmod 600 certs/postgres/server.key certs/redis/server.key certs/ca.key

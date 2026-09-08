@@ -41,10 +41,10 @@ rand_hex() {
 
 case "$(uname -m)" in
   aarch64|arm64)
-    WAHA_IMAGE="devlikeapro/waha:gows-arm-2026.6.2"
+    WAHA_IMAGE="devlikeapro/waha:gows-arm"
     ;;
   x86_64|amd64)
-    WAHA_IMAGE="devlikeapro/waha:gows-2026.6.2"
+    WAHA_IMAGE="devlikeapro/waha:gows"
     ;;
   *)
     echo "Arquitetura não reconhecida: $(uname -m)" >&2
@@ -70,7 +70,7 @@ LOCAL_WAHA_PORT=3000
 LOCAL_POSTGRES_PORT=5432
 LOCAL_REDIS_PORT=6379
 
-N8N_VERSION=2.30.5
+N8N_VERSION=stable
 WAHA_IMAGE=$WAHA_IMAGE
 WAHA_ENGINE=GOWS
 

@@ -67,6 +67,29 @@ Redis DB 0 usado por workflows do n8n
 
 ## Estrutura do Projeto
 
+Os recursos criados pelo Docker Compose usam o prefixo `waha-n8n` no servidor
+e `waha-n8n-local` no ambiente local. Por exemplo:
+
+| Recurso | Servidor | Local |
+|---|---|---|
+| Container n8n | `waha-n8n-n8n-1` | `waha-n8n-local-n8n-1` |
+| Rede | `waha-n8n_backend` | `waha-n8n-local_app` |
+| Volume PostgreSQL | `waha-n8n_pgdata` | `waha-n8n-local_pgdata` |
+
+As imagens usam diretamente os nomes oficiais dos fornecedores, como
+`postgres:16-bookworm`, `redis:8.2-alpine` e `docker.io/n8nio/n8n:stable`.
+O deploy baixa essas imagens dos registros, sem build ou tags personalizadas.
+Isso permite ao Arcane consultar atualizações usando referências publicadas.
+As imagens podem ser compartilhadas com outros projetos; containers, redes e
+volumes continuam identificados pelos prefixos acima.
+
+`N8N_VERSION` e `WAHA_IMAGE` selecionam os canais no `.env` ou `.env.local`.
+O n8n é baixado do repositório oficial no Docker Hub.
+
+Dentro das redes, os serviços continuam acessíveis por nomes como
+`n8n`, `waha`, `postgres` e `redis`. Os nomes acima pressupõem que o projeto não
+foi sobrescrito por `-p` ou `COMPOSE_PROJECT_NAME`.
+
 ```text
 .
 ├── Caddyfile
@@ -194,6 +217,7 @@ http://localhost:3000/dashboard
 Se preferir rodar manualmente:
 
 ```bash
+docker compose --env-file .env.local -f docker-compose.local.yml pull
 docker compose --env-file .env.local -f docker-compose.local.yml up -d
 ```
 
@@ -314,6 +338,22 @@ https://n8n.seudominio.com
 No primeiro acesso, o n8n solicitará a criação da conta proprietária.
 
 ### WAHA
+
+No primeiro acesso ao dashboard, a conexão padrão deste servidor recebe
+automaticamente `WAHA_API_KEY_PLAIN`. O script
+`scripts/waha-dashboard-bootstrap.cjs` prepara essa configuração na inicialização
+do container, antes de executar o entrypoint original do WAHA.
+
+O login do dashboard é obrigatório: a chave é entregue ao navegador somente na
+página autenticada e fica no armazenamento local usado pelo próprio dashboard.
+Conexões existentes com a chave padrão `admin` são corrigidas; chaves personalizadas
+e conexões de outros servidores são preservadas. Se trocar uma chave personalizada,
+atualize também a conexão salva no dashboard.
+
+Essa integração usa o HTML e o formato de armazenamento do dashboard upstream.
+Ao atualizar o WAHA, confira o primeiro acesso em uma janela privativa. O script
+interrompe a inicialização se a chave e seu hash não corresponderem ou se faltar
+a autenticação do painel. A chave é inserida somente no HTML do container em execução, não na imagem.
 
 Acesse:
 
@@ -451,17 +491,48 @@ O processo inclui:
 
 ## Atualizações
 
-As versões ficam fixadas no `.env` e no `docker-compose.yml`. Antes de atualizar:
+O deploy executa `docker compose pull`, buscando a imagem mais recente
+nos canais abaixo:
 
-1. Leia as notas oficiais do n8n e WAHA.
-2. Execute `./scripts/backup.sh`.
-3. Altere a versão desejada.
-4. Rode:
+| Serviço | Canal | Política |
+|---|---|---|
+| n8n | `docker.io/n8nio/n8n:stable` | Versão estável mais recente |
+| WAHA | `devlikeapro/waha:gows` ou `gows-arm` | Versão mais recente da engine GOWS para a arquitetura |
+| Redis | `redis:8.2-alpine` | Correções mais recentes da linha com suporte estendido |
+| PostgreSQL | `postgres:16-bookworm` | Correções mais recentes da linha 16, com suporte até novembro de 2028 |
+| Caddy | `caddy:2-alpine` | Versão mais recente da linha 2 |
+
+Nem todos os fornecedores oferecem um canal chamado LTS. O n8n usa o canal
+[stable](https://github.com/n8n-io/n8n-docs/blob/main/docs/changelog/v20-breaking-changes.md),
+o WAHA usa [tags por engine e arquitetura](https://waha.devlike.pro/docs/how-to/engines/),
+e o Redis 8.2 tem [suporte estendido até setembro de 2030](https://redis.io/docs/latest/operate/oss_and_stack/install/version-mgmt/).
+
+O PostgreSQL 18 é a linha estável mais recente na revisão desta configuração
+(setembro de 2026), mas este projeto mantém a linha 16 como versão principal suportada.
+A [política do PostgreSQL](https://www.postgresql.org/support/versioning/) exige
+migração para trocar de versão principal; usar `latest` não faz essa migração.
+Novas linhas de suporte estendido do Redis também precisam ser avaliadas antes
+de alterar o canal. Essas tags acompanham atualizações dentro das linhas escolhidas,
+não selecionam automaticamente futuras linhas LTS.
+
+Para buscar e aplicar as atualizações no ambiente local:
 
 ```bash
-docker compose pull
-docker compose up -d
+bash ./scripts/deploy-local.sh
 ```
+
+No servidor, faça backup e execute o deploy:
+
+```bash
+bash ./scripts/backup.sh
+bash ./scripts/deploy.sh
+```
+
+Revise as notas de versão antes do deploy. Não há atualização agendada em segundo
+plano: `restart` não baixa imagens novas; use os scripts de deploy para fazer pull e
+recriar os serviços. Os arquivos de
+exemplo e os scripts de setup usam esses canais; configurações existentes podem
+sobrescrevê-los em `.env` ou `.env.local`.
 
 ## Segurança
 
