@@ -608,4 +608,6 @@ O `.gitignore` deste projeto já cobre esses arquivos, mas vale revisar o histó
 
 ## Licença
 
-Defina uma licença antes de publicar. Para portfólio aberto, opções comuns são MIT, Apache-2.0 ou GPL-3.0, conforme o nível de liberdade que você deseja conceder.
+Os scripts, arquivos de configuração e documentação originais deste repositório são disponibilizados sob a licença MIT. Consulte o arquivo [LICENSE](LICENSE).
+
+**Dependências e imagens de terceiros não são relicenciadas por este projeto.** n8n tem termos próprios de licenciamento (incluindo a Sustainable Use License); WAHA, Caddy, PostgreSQL, Redis e demais componentes devem ser utilizados segundo suas respectivas licenças e condições de distribuição. A licença MIT deste repositório não concede direitos adicionais sobre esses componentes, marcas ou serviços.
